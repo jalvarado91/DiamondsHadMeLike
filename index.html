@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<title>Phaser - Making your first game, part 1</title>
+	<script type="text/javascript" src="js/phaser.min.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+			height: 100vh;
+			width: 100%;
+			background: url('bg.png');
+			background-position: center;
+			background-size: cover;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+        }
+		canvas {
+
+		}
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+
+var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+
+var platforms;
+var player;
+var cursors;
+var stars;
+var score = 0;
+var scoreText;
+var direction;
+var sky_tile;
+
+var music;
+var woo;
+var wee;
+var yeah;
+var chorus;
+var nah;
+var big_rings;
+
+var drake_face;
+
+var skies = [
+	'green_bg',
+	'orange_bg',
+	'purple_bg',
+	'red_bg',
+	'yellow_bg'
+];
+
+
+function preload() {
+
+	game.world.setBounds(0,0,3000, 600);
+
+    game.load.image('star', 'assets/diamond.png');
+	game.load.image('ground', 'assets/jump_ground.png');
+	game.load.image('platform', 'assets/platters.png');
+    game.load.image('river', 'assets/gold_river.png');
+
+    game.load.image('sky', 'assets/sky.png');
+
+    game.load.image('green_bg', 'assets/sky/green_bg.png');
+    game.load.image('orange_bg', 'assets/sky/orange_bg.png');
+    game.load.image('purple_bg', 'assets/sky/purple_bg.png');
+    game.load.image('red_bg', 'assets/sky/red_bg.png');
+    game.load.image('yellow_bg', 'assets/sky/yellow_bg.png');
+
+    game.load.image('drake_face', 'assets/drake_face.png');
+
+
+    game.load.spritesheet('dude', 'assets/drake.png', 32, 48);
+	game.load.audio('ost', ['assets/jumpman_bg.mp3']);
+	game.load.audio('big_rings', ['assets/big_rings.mp3']);
+	game.load.audio('chorus', ['assets/jumpman_chorus.mp3']);
+	game.load.audio('yeah', ['assets/yeah.mp3']);
+	game.load.audio('wee', ['assets/wee.mp3']);
+	game.load.audio('nah', ['assets/nahuh.mp3']);
+	game.load.audio('woo', ['assets/woo.mp3']);
+}
+
+function create() {
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+    // game.add.sprite(0, 0, 'sky');
+	sky_tile = game.add.tileSprite(0, 0,3000,600, 'sky');
+
+	music = game.add.audio('ost');
+	big_rings = game.add.audio('big_rings');
+	chorus = game.add.audio('chorus');
+	yeah = game.add.audio('yeah');
+	wee = game.add.audio('wee');
+	woo = game.add.audio('woo');
+	nah = game.add.audio('nah');
+    music.loopFull();
+
+
+    platforms = game.add.group();
+    platforms.enableBody = true;
+
+    var ground = platforms.create(0, game.world.height - 80, 'ground');
+	// game.add.sprite(0, game.world.height - 32, 'river');
+    ground.scale.setTo(200, 2);
+
+    ground.body.immovable = true;
+
+
+	var ledge = platforms.create(-150, 250, 'platform');
+    ledge.body.immovable = true;
+
+	for (var i = 0; i < 5; i++)
+	{
+		var rand = game.rnd.integerInRange(-150, 250);
+		var rand2 = game.rnd.integerInRange(200, 450);
+		ledge = platforms.create(i*500 + rand, rand2, 'platform');
+	    ledge.body.immovable = true;
+	}
+
+    // var ledge = platforms.create(400, 400, 'platform');
+    // ledge.body.immovable = true;
+	//
+    // ledge = platforms.create(-150, 250, 'platform');
+    // ledge.body.immovable = true;
+
+
+	// Player
+	player = game.add.sprite(32, game.world.height - 150, 'dude');
+	game.physics.arcade.enable(player);
+
+	game.camera.follow(player);
+
+    player.body.bounce.y = 0.2;
+    player.body.gravity.y = 300;
+    player.body.collideWorldBounds = true;
+
+	player.animations.add('left', [0, 1, 2, 3], 5, true);
+    player.animations.add('right', [5, 6, 7, 8], 5, true);
+
+	cursors = game.input.keyboard.createCursorKeys();
+
+	game.input.mouse.mouseWheelCallback = mouseWheel;
+
+	scoreText = game.add.text(16, 16, 'score: 0', { fontSize: '28px', fill: '#000' });
+	scoreText.fixedToCamera = true;
+
+	stars = game.add.group();
+	stars.enableBody = true;
+
+    populateStars();
+}
+
+function update() {
+	game.physics.arcade.collide(player, platforms);
+	game.physics.arcade.collide(stars, platforms);
+	game.physics.arcade.overlap(player, stars, collectStar, null, this);
+
+	player.body.velocity.x = 0;
+
+	if (cursors.left.isDown)
+	{
+		//  Move to the left
+		player.body.velocity.x = -300;
+		player.animations.play('left');
+	}
+	else if (cursors.right.isDown)
+	{
+		///  Move to the right
+		player.body.velocity.x = 300;
+		player.animations.play('right');
+	}
+	else
+	{
+		//  Stand still
+		player.animations.stop();
+		player.frame = 4;
+	}
+
+	if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR) && player.body.touching.down) {
+		player.body.velocity.y = -350;
+		// chorus.play();
+	}
+}
+
+function mouseWheel(event) {
+  var multiplier = Math.abs(event.wheelDelta);
+
+  if (game.input.mouse.wheelDelta === Phaser.Mouse.WHEEL_UP)
+  {
+	  //  Move to the left
+	  player.body.velocity.x = -15 * multiplier;
+	  player.animations.play('left');
+  }
+  else if (game.input.mouse.wheelDelta === Phaser.Mouse.WHEEL_DOWN)
+  {
+	  //  Move to the right
+	  player.body.velocity.x = 15 * multiplier;
+	  player.animations.play('right');
+  }
+  else
+  {
+	  //  Stand still
+	  player.animations.stop();
+	  player.frame = 4;
+  }
+}
+
+function populateStars() {
+	for (var i = 0; i < game.world.width/80; i++)
+	{
+		//  Create a star inside of the 'stars' group
+		var star = stars.create(i * 70, 0, 'star');
+		star.body.gravity.y = 300;
+		//  This just gives each star a slightly random bounce value
+		star.body.bounce.y = 0.7 + Math.random() * 0.2;
+	}
+}
+
+function collectStar (player, star) {
+    // Removes the star from the screen
+    star.destroy();
+
+	if(stars.length < 1) {
+		console.log("done");
+		music.stop();
+		big_rings.play();
+		drake_face = game.add.image(400, 200, 'drake_face');
+		drake_face.anchor.x = 0.5;
+		drake_face.anchor.y = 0.5;
+		drake_face.fixedToCamera = true;
+		game.add.tween(drake_face).to( { angle: 3600 }, 3000, Phaser.Easing.Linear.None, true);
+	}
+
+	//  Add and update the score
+    score += 10;
+    scoreText.text = 'Score: ' + score;
+
+	new_texture_key = skies[game.rnd.integerInRange(0, skies.length - 1)];
+	sky_tile.loadTexture(new_texture_key);
+
+	var shout_out = game.rnd.integerInRange(0, 4);
+	if(shout_out == 0){
+		woo.play();
+	}
+	else if (shout_out == 1) {
+		wee.play();
+	}
+	else {
+		if(game.rnd.integerInRange(0, 10) < 4){
+			chorus.play();
+		}
+		else if(game.rnd.integerInRange(0, 10) < 4) {
+			nah.play();
+		}
+		else {
+			yeah.play();
+		}
+	}
+
+}
+
+
+</script>
+
+</body>
+</html>
